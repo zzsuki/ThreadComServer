@@ -3,6 +3,7 @@ import socket
 from multiprocessing import Process, Pool
 from .settings import PORT_MAP
 import logging
+from concurrent.futures import ProcessPoolExecutor
 
 
 class SimpleUDPServer:
@@ -65,21 +66,21 @@ class ThreadTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def run_server(ip: str = "127.0.0.1"):
     """根据port_mapserver"""
-    serverlist = []
+    serverlist = []    # 保存进程任务的Future， 调用result可获取结果
+    with ProcessPoolExecutor(max_workers=4) as pool:
+        for _, v in PORT_MAP.items():
+            if isinstance(v, dict):
+                port = v.get("TCP")
+                if port:
+                    server = ThreadTCPServer((ip, port), SimpleTCPRequestHandler)
+                    serverlist.append(pool.submit(server.serve_forever))
+                
+                port = v.get("UDP")
+                if port:
+                    serverlist.append(pool.submit(SimpleUDPServer(ip, port).serve_forever))
 
-    for _, v in PORT_MAP.items():
-        if isinstance(v, dict):
-            port = v.get("TCP")
-            if port:
-                server = ThreadTCPServer((ip, port), SimpleTCPRequestHandler)
-                serverlist.append(Process(target=server.serve_forever))
-            
-            port = v.get("UDP")
-            if port:
-                serverlist.append(Process(target=SimpleUDPServer(ip, port).serve_forever))
+        for p in serverlist:
+            p.start()
 
-    for p in serverlist:
-        p.start()
-
-    serverlist[-1].join()
+        serverlist[-1].join()
         

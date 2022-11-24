@@ -12,4 +12,4 @@ if __name__ == '__main__':
     try:
         run_server('0.0.0.0')
     except Exception as e:
-        logging.info('检测到异常中断，服务将关闭')
+        logging.info('检测到异常中断，服务将关闭', exc_info=True)
