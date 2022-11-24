@@ -1,0 +1,15 @@
+.git
+.idea
+venv
+
+.dockerignore
+.env
+.gitignore
+*.db
+db.sqlite3
+Dockerfile
+README.md
+docker-build.sh
+docker-compose.yml
+
+*.py[cd]
