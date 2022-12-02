@@ -45,6 +45,10 @@ class SimpleTCPRequestHandler(socketserver.BaseRequestHandler):
         while True:
             try:
                 buf = self.request.recv(1024)
+                if not buf:
+                    logging.info('Got empty msg from {}: {}; connection will close'.format(self.client_address[0], buf))
+                    self.request.close()
+                    break
                 logging.info('Got msg from {}: {}'.format(self.client_address[0], buf))
                 self.request.send(buf)
                 logging.info('Return msg to {}: {}'.format(self.client_address[0], buf))
