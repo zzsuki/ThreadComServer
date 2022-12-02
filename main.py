@@ -8,7 +8,7 @@ if __name__ == '__main__':
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     logging.basicConfig(level=logging.INFO, handlers=[console_handler])
-    logging.info('Start Serving...')
+    logging.info('Start Server ...')
     try:
         run_server('0.0.0.0')
     except Exception as e:

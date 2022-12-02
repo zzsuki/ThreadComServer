@@ -1,14 +1,22 @@
-# 多线程通信服务器
+# Threading Communication Server
 
-给予多线程的通信服务端，从配置中读取端口信息，并进行监听；可以接收服务器发送的任意信息，并返回相同的内容
+Simple tcp/udp server based on multithreading. This simple tool can read from setting and listen on given port. It can only reply to client with given message right now.  Planning to let it support more protocol model, such as http, https, ftp, etc.
 
-## 使用方法
+## Usage
+
+### run in python
 
 ```python
 python3 main.py
 ```
 
-## 配置文件
+### run in docker
+
+```bash
+docker-compose up -d
+```
+
+## settings example
 
 ```python
 PORT_MAP = {
@@ -40,4 +48,6 @@ PORT_MAP = {
 }
 ```
 
-目前协议名称暂时没什么作用，后续会根据协议名称设置对应的handler，对不同协议的请求进行响应，从而模拟不同应用程的通信
+## TODO
+
+- [ ] Add more protocol support
