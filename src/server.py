@@ -1,10 +1,9 @@
 import socketserver
 import socket
-from multiprocessing import Process, Pool
 from .settings import PORT_MAP
 import logging
 from concurrent.futures import ProcessPoolExecutor
-
+from multiprocessing import Process
 
 class SimpleUDPServer:
     """简单UDP服务器"""
@@ -15,21 +14,19 @@ class SimpleUDPServer:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.host, self.port))
         self.recv_buf = 1024
-
-    def recv(self) -> bytes:
-        """接收udp数据"""
-        return self.sock.recvfrom(self.recv_buf)
-
-    def send(self, msg: bytes, addr: tuple) -> None:
-        """发送udp数据给指定socket"""
-        self.sock.sendto(msg, addr)
+        
 
     def recv_and_send(self) -> None:
         """持续接收并返回给客户端相同的数据"""
-        logging.info('UDP Sock {} 开始监听...'.format((self.host, self.port)))
+        logging.info('UDP sock {} start listening...'.format((self.host, self.port)))
         while True:
-            msg, addr = self.recv()
-            self.send(msg, addr)
+            try:
+                msg, addr = self.sock.recvfrom(self.recv_buf)
+                logging.info('Got msg from {}: {}'.format(addr[0], msg))
+                self.sock.sendto(msg, addr)
+                logging.info('Send return msg to {}: {}'.format(addr[0], msg))
+            except Exception as e:
+                logging.info('Got exception: {}'.format(e))
 
     def serve_forever(self) -> None:
         """启动服务器"""
@@ -46,12 +43,15 @@ class SimpleTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self) -> None:
         """消息处理方法"""
         while True:
-            buf = self.request.recv(1024)
-            if not buf:     # 收到空内容
+            try:
+                buf = self.request.recv(1024)
+                logging.info('Got msg from {}: {}'.format(self.client_address[0], buf))
+                self.request.send(buf)
+                logging.info('Return msg to {}: {}'.format(self.client_address[0], buf))
+            except Exception as e:
+                logging.error('Got exception: {}'.format(e), exc_info=True)
                 self.request.close()
                 break
-            else:
-                self.request.send(buf)
                 
 
 class ThreadTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -60,27 +60,28 @@ class ThreadTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address: bool = True
     
     def __init__(self, server_address, RequestHandlerClass):
-        logging.info('TCP Sock {} 已开始监听...'.format(server_address))
+        logging.info('TCP Sock {} Start listening ...'.format(server_address))
         super().__init__(server_address=server_address, RequestHandlerClass=RequestHandlerClass)
+
         
 
 def run_server(ip: str = "127.0.0.1"):
     """根据port_mapserver"""
     serverlist = []    # 保存进程任务的Future， 调用result可获取结果
-    with ProcessPoolExecutor(max_workers=4) as pool:
-        for _, v in PORT_MAP.items():
-            if isinstance(v, dict):
-                port = v.get("TCP")
-                if port:
-                    server = ThreadTCPServer((ip, port), SimpleTCPRequestHandler)
-                    serverlist.append(pool.submit(server.serve_forever))
-                
-                port = v.get("UDP")
-                if port:
-                    serverlist.append(pool.submit(SimpleUDPServer(ip, port).serve_forever))
 
-        for p in serverlist:
-            p.start()
+    for _, v in PORT_MAP.items():
+        if isinstance(v, dict):
+            port = v.get("TCP")
+            if port:
+                server = ThreadTCPServer((ip, port), SimpleTCPRequestHandler)
+                serverlist.append(Process(target=server.serve_forever))
+            
+            port = v.get("UDP")
+            if port:
+                serverlist.append(Process(target=SimpleUDPServer(ip, port).serve_forever))
 
-        serverlist[-1].join()
+    for p in serverlist:
+        p.start()
+
+    serverlist[-1].join()
         
